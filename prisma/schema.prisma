@@ -274,14 +274,9 @@ model Video {
   id              String   @id @default(cuid())
   lessonId        String   @unique
   lesson          Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  muxAssetId      String?  @unique
-  muxPlaybackId   String?  @unique
-  muxUploadId     String?
-  muxStatus       String?
+  youtubeVideoId  String?
   durationSeconds Int?
-  aspectRatio     String?
   thumbnailUrl    String?
-  captionsReady   Boolean  @default(false)
   requiresActiveSubscription Boolean @default(true)
   progress        VideoProgress[]
   createdAt       DateTime @default(now())

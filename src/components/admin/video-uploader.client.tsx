@@ -1,118 +1,129 @@
 "use client";
-import { useState, useRef } from "react";
-import type { Video } from "@prisma/client";
-import { Upload, CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle, PlayCircle, ExternalLink } from "lucide-react";
 
 type Props = {
   lessonId: string;
-  video: Video | null;
+  currentYoutubeVideoId?: string | null;
 };
 
-export function VideoUploaderClient({ lessonId, video }: Props) {
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+function extractVideoId(input: string): string | null {
+  const trimmed = input.trim();
+  // Already a bare ID (11 chars, no slashes)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  // Full URL or short URL
+  try {
+    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+    if (url.hostname.includes("youtu.be")) return url.pathname.slice(1).split("?")[0];
+    return url.searchParams.get("v");
+  } catch {
+    return null;
+  }
+}
+
+export function VideoUploaderClient({ lessonId, currentYoutubeVideoId }: Props) {
+  const [input, setInput] = useState(currentYoutubeVideoId ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(!!currentYoutubeVideoId);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  async function handleUpload(file: File) {
-    setUploading(true);
+  const videoId = extractVideoId(input);
+
+  async function handleSave() {
+    if (!videoId) { setError("Could not extract a valid YouTube video ID from that URL"); return; }
     setError(null);
-    setProgress(0);
-
+    setSaving(true);
     try {
-      const res = await fetch("/api/mux/upload", {
+      const res = await fetch("/api/videos/set-youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId }),
+        body: JSON.stringify({ lessonId, youtubeVideoId: videoId }),
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Upload endpoint failed");
-      }
-
-      const { uploadUrl } = await res.json();
-
-      const { createUpload } = await import("@mux/upchunk");
-      const upload = createUpload({ endpoint: uploadUrl, file, chunkSize: 5120 });
-      
-      upload.on("progress", (e) => setProgress(Math.round(e.detail)));
-      upload.on("success", () => { setDone(true); setUploading(false); });
-      upload.on("error", (e) => { setError(e.detail.message); setUploading(false); });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-      setUploading(false);
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Save failed"); return; }
+      setSaved(true);
+    } finally {
+      setSaving(false);
     }
   }
 
-  if (video?.muxStatus === "ready") {
-    return (
-      <div className="flex items-center gap-3 bg-gold/5 rounded-xl p-4">
-        <CheckCircle className="h-6 w-6 text-gold" />
-        <div>
-          <p className="text-navy font-medium">Video is live</p>
-          <p className="text-muted text-sm">Re-upload to replace</p>
-        </div>
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="ml-auto text-sm text-navy border border-navy/20 px-3 py-1.5 rounded-lg hover:bg-navy/5 transition-colors"
-        >
-          Replace
-        </button>
-        <input ref={inputRef} type="file" accept="video/*" className="hidden" onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); }} />
-      </div>
-    );
-  }
-
-  if (done) {
-    return (
-      <div className="flex items-center gap-3 bg-navy/5 rounded-xl p-4">
-        <Loader2 className="h-6 w-6 text-navy animate-spin" />
-        <div>
-          <p className="text-navy font-medium">Processing…</p>
-          <p className="text-muted text-sm">Mux is encoding the video. This takes 2–5 minutes.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (uploading) {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-navy text-sm font-medium">Uploading…</span>
-          <span className="text-muted text-sm">{progress}%</span>
-        </div>
-        <div className="h-2 bg-navy/10 rounded-full">
-          <div className="h-2 bg-gold rounded-full transition-all" style={{ width: `${progress}%` }} />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      {error && (
-        <div className="flex items-center gap-2 bg-red/5 text-red rounded-lg p-3 mb-3 text-sm">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          {error}
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+        <PlayCircle className="h-5 w-5 text-red-500" />
+        <h3 className="font-semibold text-navy">YouTube Video</h3>
+      </div>
+
+      <div className="bg-navy/5 rounded-xl p-4 text-sm text-muted space-y-1">
+        <p className="font-medium text-navy text-xs">How to add a video:</p>
+        <ol className="list-decimal list-inside space-y-0.5 text-xs">
+          <li>Upload to YouTube → set visibility to <strong>Unlisted</strong></li>
+          <li>Copy the video URL or just the video ID</li>
+          <li>Paste below and click Save</li>
+        </ol>
+      </div>
+
+      <div>
+        <label className="block text-navy text-sm font-semibold mb-2">
+          YouTube URL or Video ID
+        </label>
+        <input
+          type="text"
+          value={input}
+          onChange={e => { setInput(e.target.value); setSaved(false); setError(null); }}
+          placeholder="https://youtu.be/dQw4w9WgXcQ  or  dQw4w9WgXcQ"
+          className="w-full border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none font-mono text-sm"
+        />
+        {input && !videoId && (
+          <p className="text-red text-xs mt-1">Paste a YouTube URL or 11-character video ID</p>
+        )}
+        {videoId && (
+          <p className="text-gold text-xs mt-1 font-medium">✓ Video ID: {videoId}</p>
+        )}
+      </div>
+
+      {/* Preview thumbnail */}
+      {videoId && (
+        <div className="relative aspect-video w-full max-w-sm rounded-xl overflow-hidden bg-black">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+            alt="Video thumbnail"
+            className="w-full h-full object-cover opacity-80"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-red-600 rounded-full p-2">
+              <PlayCircle className="h-5 w-5 text-white" />
+            </div>
+          </div>
+          <a
+            href={`https://www.youtube.com/watch?v=${videoId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 hover:bg-black/80 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Preview
+          </a>
         </div>
       )}
-      <div
-        onClick={() => inputRef.current?.click()}
-        className="border-2 border-dashed border-navy/20 rounded-xl p-8 text-center cursor-pointer hover:border-gold transition-colors"
-      >
-        <Upload className="h-8 w-8 text-muted mx-auto mb-2" />
-        <p className="text-navy font-medium">Drop video here or click to upload</p>
-        <p className="text-muted text-sm mt-1">MP4 · Up to 2GB · Max 1 hour</p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); }}
-        />
+
+      {error && <p className="text-red text-sm">{error}</p>}
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving || !videoId}
+          className="bg-gold text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-gold/90 disabled:opacity-60 transition-colors"
+        >
+          {saving ? "Saving…" : "Save Video"}
+        </button>
+        {saved && (
+          <div className="flex items-center gap-1.5 text-gold text-sm font-medium">
+            <CheckCircle className="h-4 w-4" />
+            Saved
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,28 +1,25 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw } from "lucide-react";
+import { RotateCcw, ExternalLink } from "lucide-react";
 import { formatTime } from "@/lib/utils";
 
 type Props = {
   videoId: string;
-  playbackUrl: string;
+  youtubeVideoId: string;
   resumeFromSec: number;
-  durationSec: number;
-  watermarkText: string;
+  studentName: string;
 };
 
-export function WatchPlayer({ videoId, playbackUrl, resumeFromSec, durationSec, watermarkText }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [ready, setReady] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(resumeFromSec);
-  const [muted, setMuted] = useState(false);
+export function WatchPlayer({ videoId, youtubeVideoId, resumeFromSec, studentName }: Props) {
+  const [hasResumed, setHasResumed] = useState(false);
   const lastSyncRef = useRef(0);
-  const syncInProgressRef = useRef(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const syncProgress = useCallback(async (position: number) => {
-    if (syncInProgressRef.current) return;
-    syncInProgressRef.current = true;
+    if (position < 2) return;
     try {
       await fetch(`/api/videos/${videoId}/progress`, {
         method: "PATCH",
@@ -30,155 +27,114 @@ export function WatchPlayer({ videoId, playbackUrl, resumeFromSec, durationSec, 
         body: JSON.stringify({ position: Math.floor(position) }),
       });
     } catch {
-      // ignore network errors
-    } finally {
-      syncInProgressRef.current = false;
+      // ignore
     }
   }, [videoId]);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const start = () => {
-      if (resumeFromSec > 5 && resumeFromSec < durationSec - 5) {
-        video.currentTime = resumeFromSec;
-      }
-      setReady(true);
-    };
-
-    // Try HLS.js for non-Safari
-    const isHlsUrl = playbackUrl.includes(".m3u8");
-    if (isHlsUrl && !video.canPlayType("application/vnd.apple.mpegurl")) {
-      import("hls.js").then(({ default: Hls }) => {
-        if (Hls.isSupported()) {
-          const hls = new Hls({ maxBufferLength: 30, enableWorker: true });
-          hls.loadSource(playbackUrl);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, start);
-          return () => hls.destroy();
-        }
-      });
-    } else {
-      video.src = playbackUrl;
-      video.addEventListener("loadedmetadata", start, { once: true });
+    // Load YouTube IFrame API
+    if (!window.YT) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
     }
 
-    const onTimeUpdate = () => {
-      const t = video.currentTime;
-      setCurrentTime(t);
-      if (t - lastSyncRef.current >= 10) {
-        lastSyncRef.current = t;
-        syncProgress(t);
-      }
-    };
+    const startSec = resumeFromSec > 5 ? resumeFromSec : 0;
 
-    const onPlay = () => setPlaying(true);
-    const onPause = () => {
-      setPlaying(false);
-      syncProgress(video.currentTime);
-    };
+    function createPlayer() {
+      if (!containerRef.current) return;
+      playerRef.current = new window.YT.Player(containerRef.current, {
+        videoId: youtubeVideoId,
+        playerVars: {
+          start: Math.floor(startSec),
+          rel: 0,           // no related videos from other channels
+          modestbranding: 1,
+          iv_load_policy: 3, // no video annotations
+          playsinline: 1,
+        },
+        events: {
+          onReady: () => {
+            if (startSec > 5) setHasResumed(true);
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onStateChange: (e: any) => {
+            // PlayerState: PLAYING=1, PAUSED=2, ENDED=0
+            if (e.data === 1) {
+              // Start periodic sync every 10s while playing
+              intervalRef.current = setInterval(() => {
+                const t = playerRef.current?.getCurrentTime() ?? 0;
+                if (t - lastSyncRef.current >= 10) {
+                  lastSyncRef.current = t;
+                  syncProgress(t);
+                }
+              }, 5000);
+            } else {
+              if (intervalRef.current) clearInterval(intervalRef.current);
+              const t = playerRef.current?.getCurrentTime() ?? 0;
+              if (t > 2) syncProgress(t);
+            }
+          },
+        },
+      });
+    }
 
-    const flush = () => syncProgress(video.currentTime);
-    video.addEventListener("timeupdate", onTimeUpdate);
-    video.addEventListener("play", onPlay);
-    video.addEventListener("pause", onPause);
+    if (window.YT?.Player) {
+      createPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = createPlayer;
+    }
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [youtubeVideoId, resumeFromSec, syncProgress]);
+
+  // Sync on page hide/unload
+  useEffect(() => {
+    const flush = () => {
+      const t = playerRef.current?.getCurrentTime() ?? 0;
+      if (t > 2) syncProgress(t);
+    };
     window.addEventListener("beforeunload", flush);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") flush();
     });
-
-    return () => {
-      video.removeEventListener("timeupdate", onTimeUpdate);
-      video.removeEventListener("play", onPlay);
-      video.removeEventListener("pause", onPause);
-      window.removeEventListener("beforeunload", flush);
-    };
-  }, [playbackUrl, resumeFromSec, durationSec, syncProgress]);
-
-  const togglePlay = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (v.paused) v.play();
-    else v.pause();
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = videoRef.current;
-    if (!v) return;
-    const t = Number(e.target.value);
-    v.currentTime = t;
-    setCurrentTime(t);
-  };
-
-  const pct = durationSec > 0 ? (currentTime / durationSec) * 100 : 0;
+    return () => window.removeEventListener("beforeunload", flush);
+  }, [syncProgress]);
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black group">
-      <video
-        ref={videoRef}
-        playsInline
-        preload="metadata"
-        className="h-full w-full"
-        controlsList="nodownload noremoteplayback"
-        disablePictureInPicture
-        onClick={togglePlay}
-      />
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+      {/* YouTube player mounts here */}
+      <div ref={containerRef} className="h-full w-full" />
 
-      {/* Anti-piracy watermark */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-        <span className="rotate-[-25deg] text-xl font-bold text-white/10 tracking-[0.3em] select-none whitespace-nowrap">
-          {watermarkText}
-        </span>
-      </div>
-
-      {/* Loading overlay */}
-      {!ready && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-          <div className="text-white text-sm animate-pulse">Loading video…</div>
-        </div>
-      )}
-
-      {/* Controls */}
-      {ready && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <input
-            type="range"
-            min={0}
-            max={durationSec}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-1 accent-yellow-400 cursor-pointer mb-2"
-          />
-          <div className="flex items-center gap-3">
-            <button onClick={togglePlay} className="text-white hover:text-yellow-400 transition-colors">
-              {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-            </button>
-            <button onClick={() => { const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(!muted); } }} className="text-white hover:text-yellow-400 transition-colors">
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-            <span className="text-white text-xs flex-1">
-              {formatTime(currentTime)} / {formatTime(durationSec)}
-            </span>
-            <span className="text-white/60 text-xs">{Math.round(pct)}%</span>
-            <button onClick={() => videoRef.current?.requestFullscreen()} className="text-white hover:text-yellow-400 transition-colors">
-              <Maximize className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Resume indicator */}
-      {ready && resumeFromSec > 5 && (
-        <div className="absolute top-3 right-3">
+      {/* Resume badge */}
+      {hasResumed && resumeFromSec > 5 && (
+        <div className="absolute top-3 right-3 z-10">
           <button
-            onClick={() => { if (videoRef.current) videoRef.current.currentTime = 0; }}
-            className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"
+            onClick={() => playerRef.current?.seekTo(0, true)}
+            className="flex items-center gap-1 bg-black/70 text-white text-xs px-2.5 py-1.5 rounded-full hover:bg-black/90 transition-colors"
           >
-            <RotateCcw className="h-3 w-3" /> Restart
+            <RotateCcw className="h-3 w-3" />
+            Restart from beginning
           </button>
         </div>
       )}
+
+      {/* Subtle watermark */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+        <span className="rotate-[-25deg] text-lg font-bold text-white/5 tracking-[0.4em] select-none whitespace-nowrap">
+          {studentName}
+        </span>
+      </div>
     </div>
   );
+}
+
+// Extend window type for YT API
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
 }

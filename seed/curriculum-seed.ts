@@ -660,7 +660,6 @@ async function main() {
       await db.video.create({
         data: {
           lessonId: lesson.id,
-          muxStatus: "pending",
         },
       });
     }

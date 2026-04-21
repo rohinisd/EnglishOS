@@ -26,7 +26,7 @@ export default async function TeacherSessionsPage() {
           const videoLesson = session.lessons.find(l => l.type === "VIDEO");
           const video = videoLesson?.video;
           const isPublished = !!session.publishedAt;
-          const isVideoReady = video?.muxStatus === "ready";
+          const isVideoReady = !!video?.youtubeVideoId;
 
           return (
             <div key={session.id} className="bg-white rounded-xl border border-navy/10 overflow-hidden shadow-sm">
@@ -41,9 +41,9 @@ export default async function TeacherSessionsPage() {
                     <h3 className="font-semibold text-navy">{session.title}</h3>
                     <p className="text-muted text-xs mt-1">{session.grammarFocus}</p>
                     <div className="flex items-center gap-3 mt-2">
-                      <div className={`flex items-center gap-1 text-xs ${isVideoReady ? "text-gold" : video?.muxStatus === "uploading" ? "text-navy" : "text-red-400"}`}>
+                      <div className={`flex items-center gap-1 text-xs ${isVideoReady ? "text-gold" : "text-red-400"}`}>
                         <Video className="h-3.5 w-3.5" />
-                        {isVideoReady ? "Video ready" : video?.muxStatus === "uploading" ? "Processing…" : "No video"}
+                        {isVideoReady ? "Video linked" : "No video yet"}
                       </div>
                       <span className="text-muted text-xs">{session.assignments.length} assignments</span>
                       <span className="text-muted text-xs">{session._count.doubts} doubts</span>

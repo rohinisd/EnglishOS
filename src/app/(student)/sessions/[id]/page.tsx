@@ -44,9 +44,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       {videoLesson?.video && (
         <VideoSection
           video={videoLesson.video}
-          progress={videoProgress ?? null}
           userId={user.id}
-          sessionId={session.id}
         />
       )}
 
