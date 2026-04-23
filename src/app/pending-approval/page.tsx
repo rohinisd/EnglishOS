@@ -5,7 +5,9 @@ import { Clock, Phone } from "lucide-react";
 export default async function PendingApprovalPage() {
   const user = await getSession();
   if (!user) redirect("/sign-in");
-  if (user.approvalStatus === "APPROVED") redirect("/today");
+  if (user.approvalStatus === "APPROVED") {
+    redirect(user.role === "STUDENT" ? "/today" : "/teacher/dashboard");
+  }
 
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center px-4">

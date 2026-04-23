@@ -26,9 +26,23 @@ export default function SignUpPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Sign-up failed"); return; }
+      const raw = await res.text();
+      let data: { error?: string } | null = null;
+      if (raw) {
+        try {
+          data = JSON.parse(raw) as { error?: string };
+        } catch {
+          data = null;
+        }
+      }
+
+      if (!res.ok) {
+        setError(data?.error ?? `Sign-up failed (HTTP ${res.status})`);
+        return;
+      }
       setDone(true);
+    } catch {
+      setError("Could not register right now. Please check internet and try again.");
     } finally {
       setLoading(false);
     }

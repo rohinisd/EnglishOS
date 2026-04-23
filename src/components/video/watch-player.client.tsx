@@ -1,17 +1,26 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { RotateCcw, ExternalLink } from "lucide-react";
-import { formatTime } from "@/lib/utils";
+import { RotateCcw } from "lucide-react";
 
 type Props = {
   videoId: string;
   youtubeVideoId: string;
   resumeFromSec: number;
-  studentName: string;
+  watermarkLabel: string;
 };
 
-export function WatchPlayer({ videoId, youtubeVideoId, resumeFromSec, studentName }: Props) {
+const WATERMARK_POSITIONS = [
+  "top-4 left-4",
+  "top-4 right-4",
+  "bottom-4 left-4",
+  "bottom-4 right-4",
+  "top-1/2 left-4 -translate-y-1/2",
+  "top-1/2 right-4 -translate-y-1/2",
+];
+
+export function WatchPlayer({ videoId, youtubeVideoId, resumeFromSec, watermarkLabel }: Props) {
   const [hasResumed, setHasResumed] = useState(false);
+  const [watermarkTick, setWatermarkTick] = useState(0);
   const lastSyncRef = useRef(0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const playerRef = useRef<any>(null);
@@ -30,6 +39,13 @@ export function WatchPlayer({ videoId, youtubeVideoId, resumeFromSec, studentNam
       // ignore
     }
   }, [videoId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWatermarkTick(tick => tick + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Load YouTube IFrame API
@@ -102,8 +118,14 @@ export function WatchPlayer({ videoId, youtubeVideoId, resumeFromSec, studentNam
     return () => window.removeEventListener("beforeunload", flush);
   }, [syncProgress]);
 
+  const watermarkPosition = WATERMARK_POSITIONS[watermarkTick % WATERMARK_POSITIONS.length];
+  const stamp = new Date().toLocaleTimeString("en-IN", { hour12: false });
+
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+    <div
+      className="relative aspect-video w-full overflow-hidden rounded-xl bg-black"
+      onContextMenu={e => e.preventDefault()}
+    >
       {/* YouTube player mounts here */}
       <div ref={containerRef} className="h-full w-full" />
 
@@ -120,10 +142,10 @@ export function WatchPlayer({ videoId, youtubeVideoId, resumeFromSec, studentNam
         </div>
       )}
 
-      {/* Subtle watermark */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-        <span className="rotate-[-25deg] text-lg font-bold text-white/5 tracking-[0.4em] select-none whitespace-nowrap">
-          {studentName}
+      {/* Dynamic visible watermark to deter link-sharing/screen recording */}
+      <div className={`pointer-events-none absolute z-10 ${watermarkPosition}`}>
+        <span className="rounded-full bg-black/55 px-2 py-1 text-[10px] font-medium text-white/80 shadow">
+          {watermarkLabel} | {stamp}
         </span>
       </div>
     </div>

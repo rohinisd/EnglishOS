@@ -26,13 +26,16 @@ export async function VideoSection({ video, userId }: Props) {
 
   const sessionUser = await getSession();
   const studentName = sessionUser?.name ?? "Student";
+  const phone = sessionUser?.phone ?? "";
+  const maskedPhone = phone.length >= 4 ? `****${phone.slice(-4)}` : "****";
+  const watermarkLabel = `${studentName} ${maskedPhone}`;
 
   return (
     <WatchPlayer
       videoId={video.id}
       youtubeVideoId={video.youtubeVideoId}
       resumeFromSec={resumeFromSec}
-      studentName={studentName}
+      watermarkLabel={watermarkLabel}
     />
   );
 }

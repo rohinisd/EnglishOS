@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { VideoUploaderClient } from "@/components/admin/video-uploader.client";
+import { ReadingContentEditorClient } from "@/components/admin/reading-content-editor.client";
 import { PublishSessionForm } from "@/components/admin/publish-session-form.client";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -22,8 +23,11 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
   if (!session) notFound();
 
   const videoLesson = session.lessons.find(l => l.type === "VIDEO");
+  const readingLesson = session.lessons.find(l => l.type === "READING");
   const video = videoLesson?.video ?? null;
   const isVideoReady = !!video?.youtubeVideoId;
+  const hasTopicText = !!readingLesson?.description?.trim();
+  const contentReady = isVideoReady || hasTopicText;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -92,16 +96,25 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
         )}
       </div>
 
+      {/* Topic text editor */}
+      <div className="bg-white rounded-xl border border-navy/10 p-5 shadow-sm">
+        <ReadingContentEditorClient
+          sessionId={session.id}
+          currentTitle={readingLesson?.title}
+          currentContent={readingLesson?.description}
+        />
+      </div>
+
       {/* Publish */}
       <div className="bg-white rounded-xl border border-navy/10 p-5 shadow-sm">
         <h2 className="font-semibold text-navy mb-4">Publish Session</h2>
-        {!isVideoReady && (
-          <p className="text-muted text-sm mb-4">⚠️ Add a YouTube video above before publishing.</p>
+        {!contentReady && (
+          <p className="text-muted text-sm mb-4">⚠️ Add a YouTube video or topic text above before publishing.</p>
         )}
         <PublishSessionForm
           sessionId={session.id}
           isPublished={!!session.publishedAt}
-          videoReady={isVideoReady}
+          contentReady={contentReady}
         />
       </div>
     </div>

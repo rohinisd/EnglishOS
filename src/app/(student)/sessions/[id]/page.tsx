@@ -5,7 +5,7 @@ import { VideoSection } from "@/components/video/video-section";
 import { HomeworkSection } from "@/components/submissions/homework-section";
 import { QuizSection } from "@/components/quiz/quiz-section";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, PenLine, HelpCircle, MessageCircle } from "lucide-react";
+import { BookOpen, PenLine, HelpCircle, MessageCircle, FileText } from "lucide-react";
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,8 +30,10 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   if (!session || !session.publishedAt) notFound();
 
   const videoLesson = session.lessons.find(l => l.type === "VIDEO");
+  const readingLesson = session.lessons.find(l => l.type === "READING");
   const videoProgress = videoLesson?.video?.progress[0];
   const videoCompleted = videoProgress?.completed ?? false;
+  const contentCompleted = videoLesson ? videoCompleted : true;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -48,13 +50,16 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         />
       )}
 
-      <Tabs defaultValue="homework" className="mt-6">
-        <TabsList className="grid grid-cols-4 w-full bg-navy/5 rounded-xl p-1">
+      <Tabs defaultValue={readingLesson?.description ? "topic" : "homework"} className="mt-6">
+        <TabsList className="grid grid-cols-5 w-full bg-navy/5 rounded-xl p-1">
           <TabsTrigger value="homework" className="text-xs data-[state=active]:bg-white data-[state=active]:text-navy rounded-lg">
             <PenLine className="h-3.5 w-3.5 mr-1" /> Homework
           </TabsTrigger>
           <TabsTrigger value="quiz" className="text-xs data-[state=active]:bg-white data-[state=active]:text-navy rounded-lg">
             <HelpCircle className="h-3.5 w-3.5 mr-1" /> Quiz
+          </TabsTrigger>
+          <TabsTrigger value="topic" className="text-xs data-[state=active]:bg-white data-[state=active]:text-navy rounded-lg">
+            <FileText className="h-3.5 w-3.5 mr-1" /> Topic
           </TabsTrigger>
           <TabsTrigger value="about" className="text-xs data-[state=active]:bg-white data-[state=active]:text-navy rounded-lg">
             <BookOpen className="h-3.5 w-3.5 mr-1" /> About
@@ -67,7 +72,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="homework" className="mt-4">
           <HomeworkSection
             assignments={session.assignments}
-            videoCompleted={videoCompleted}
+            videoCompleted={contentCompleted}
             userId={user.id}
             sessionId={session.id}
           />
@@ -76,9 +81,28 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="quiz" className="mt-4">
           <QuizSection
             quizzes={session.quizzes}
-            videoCompleted={videoCompleted}
+            videoCompleted={contentCompleted}
             userId={user.id}
           />
+        </TabsContent>
+
+        <TabsContent value="topic" className="mt-4">
+          <div className="bg-white rounded-xl p-5 border border-navy/10 space-y-3">
+            {readingLesson?.description ? (
+              <>
+                <h3 className="font-semibold text-navy text-base">
+                  {readingLesson.title || "Topic Notes"}
+                </h3>
+                <p className="text-muted text-sm whitespace-pre-wrap leading-relaxed">
+                  {readingLesson.description}
+                </p>
+              </>
+            ) : (
+              <p className="text-muted text-sm">
+                Topic notes are not added yet for this session.
+              </p>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="about" className="mt-4">

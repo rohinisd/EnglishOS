@@ -6,10 +6,10 @@ import { Globe, EyeOff, AlertCircle } from "lucide-react";
 type Props = {
   sessionId: string;
   isPublished: boolean;
-  videoReady: boolean;
+  contentReady: boolean;
 };
 
-export function PublishSessionForm({ sessionId, isPublished, videoReady }: Props) {
+export function PublishSessionForm({ sessionId, isPublished, contentReady }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -24,11 +24,11 @@ export function PublishSessionForm({ sessionId, isPublished, videoReady }: Props
     router.refresh();
   }
 
-  if (!videoReady && !isPublished) {
+  if (!contentReady && !isPublished) {
     return (
       <div className="flex items-center gap-2 text-muted text-sm">
         <AlertCircle className="h-4 w-4" />
-        Upload and process a video before publishing
+        Add a YouTube video or topic text before publishing
       </div>
     );
   }
