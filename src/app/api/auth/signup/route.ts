@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { normalisePhone } from "@/lib/auth";
+import { normalisePhone, isAdminPhone } from "@/lib/auth";
 import { addDays } from "date-fns";
 import { z } from "zod";
 
@@ -20,6 +20,10 @@ export async function POST(req: Request) {
   const { name, grade, schoolName, parentName, city } = parsed.data;
   const phone = normalisePhone(parsed.data.phone);
   const parentPhone = parsed.data.parentPhone ? normalisePhone(parsed.data.parentPhone) : undefined;
+
+  if (isAdminPhone(phone)) {
+    return Response.json({ error: "This number is reserved for admin sign-in. Please use the Sign In page." }, { status: 403 });
+  }
 
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing) return Response.json({ error: "An account with this phone number already exists. Please sign in." }, { status: 409 });

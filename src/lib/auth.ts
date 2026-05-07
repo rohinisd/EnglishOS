@@ -74,3 +74,19 @@ export function normalisePhone(raw: string): string {
   if (raw.trim().startsWith("+")) return raw.replace(/[^+\d]/g, "");
   return `+${digits}`;
 }
+
+// Hardcoded admin phone numbers. Sign-in with any of these phones will
+// auto-bootstrap an APPROVED ADMIN user on first attempt and route them to
+// /teacher/dashboard. Comma-separated list in ADMIN_PHONES env overrides.
+const DEFAULT_ADMIN_PHONES = ["+919620010983"];
+
+export const ADMIN_PHONES: ReadonlySet<string> = new Set(
+  (process.env.ADMIN_PHONES?.split(",").map(p => p.trim()).filter(Boolean) ?? DEFAULT_ADMIN_PHONES)
+    .map(normalisePhone),
+);
+
+export function isAdminPhone(phone: string): boolean {
+  return ADMIN_PHONES.has(normalisePhone(phone));
+}
+
+export const ADMIN_DEFAULT_NAME = process.env.ADMIN_DEFAULT_NAME ?? "Rohini Devan";

@@ -20,10 +20,23 @@ function SignInForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Sign in failed"); return; }
-      router.push(data.redirectTo ?? "/today");
+      const raw = await res.text();
+      let data: { error?: string; redirectTo?: string } | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as { error?: string; redirectTo?: string }) : null;
+      } catch {
+        data = null;
+      }
+      if (!res.ok) {
+        setError(data?.error ?? `Sign in failed (HTTP ${res.status})`);
+        return;
+      }
+      const target = data?.redirectTo ?? "/today";
+      router.push(target);
       router.refresh();
+    } catch (err) {
+      console.error("phone-login failed", err);
+      setError(err instanceof Error ? err.message : "Could not sign in. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
