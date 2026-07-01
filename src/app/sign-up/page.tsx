@@ -9,11 +9,6 @@ export default function SignUpPage() {
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    grade: "",
-    schoolName: "",
-    parentName: "",
-    parentPhone: "",
-    city: "",
   });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -74,14 +69,14 @@ export default function SignUpPage() {
 
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+          <div className="space-y-4">
+            <div>
               <label className="block text-navy text-sm font-semibold mb-1.5">Full Name *</label>
               <input type="text" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="Aarav Sharma" className="w-full border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none" />
             </div>
-            <div className="col-span-2">
-              <label className="block text-navy text-sm font-semibold mb-1.5">Phone Number * (for OTP login)</label>
+            <div>
+              <label className="block text-navy text-sm font-semibold mb-1.5">Phone Number *</label>
               <div className="flex gap-2">
                 <span className="flex items-center px-3 bg-navy/5 border-2 border-navy/20 rounded-xl text-navy text-sm font-medium">+91</span>
                 <input type="tel" required value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
@@ -89,41 +84,11 @@ export default function SignUpPage() {
                   className="flex-1 border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none" />
               </div>
             </div>
-            <div className="col-span-2">
-              <label className="block text-navy text-sm font-semibold mb-1.5">Class *</label>
-              <select required value={form.grade} onChange={e => setForm(f => ({ ...f, grade: e.target.value }))}
-                className="w-full border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none">
-                <option value="">Select class</option>
-                <option value="CLASS_8">Class 8</option>
-                <option value="CLASS_9">Class 9</option>
-                <option value="CLASS_10">Class 10</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-navy text-sm font-semibold mb-1.5">School Name</label>
-              <input type="text" value={form.schoolName} onChange={e => setForm(f => ({ ...f, schoolName: e.target.value }))}
-                placeholder="DPS Bangalore" className="w-full border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-navy text-sm font-semibold mb-1.5">City</label>
-              <input type="text" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                placeholder="Bangalore" className="w-full border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-navy text-sm font-semibold mb-1.5">Parent Name</label>
-              <input type="text" value={form.parentName} onChange={e => setForm(f => ({ ...f, parentName: e.target.value }))}
-                placeholder="Parent / Guardian" className="w-full border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-navy text-sm font-semibold mb-1.5">Parent Phone</label>
-              <input type="tel" value={form.parentPhone} onChange={e => setForm(f => ({ ...f, parentPhone: e.target.value }))}
-                placeholder="9876543210" className="w-full border-2 border-navy/20 rounded-xl px-4 py-3 text-navy focus:border-gold focus:outline-none" />
-            </div>
           </div>
 
           {error && <p className="text-red text-sm">{error}</p>}
 
-          <button type="submit" disabled={loading || !form.name || !form.phone || !form.grade}
+          <button type="submit" disabled={loading || !form.name || !form.phone}
             className="w-full bg-gold text-white py-3 rounded-xl font-semibold hover:bg-gold/90 disabled:opacity-60 transition-colors mt-2">
             {loading ? "Creating account…" : "Register →"}
           </button>

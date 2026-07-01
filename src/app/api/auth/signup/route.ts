@@ -6,20 +6,14 @@ import { z } from "zod";
 const Body = z.object({
   name: z.string().min(2),
   phone: z.string().min(10),
-  grade: z.enum(["CLASS_8", "CLASS_9", "CLASS_10"]),
-  schoolName: z.string().optional(),
-  parentName: z.string().optional(),
-  parentPhone: z.string().optional(),
-  city: z.string().optional(),
 });
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
 
-  const { name, grade, schoolName, parentName, city } = parsed.data;
+  const { name } = parsed.data;
   const phone = normalisePhone(parsed.data.phone);
-  const parentPhone = parsed.data.parentPhone ? normalisePhone(parsed.data.parentPhone) : undefined;
 
   if (isAdminPhone(phone)) {
     return Response.json({ error: "This number is reserved for admin sign-in. Please use the Sign In page." }, { status: 403 });
@@ -38,10 +32,6 @@ export async function POST(req: Request) {
         role: "STUDENT",
         approvalStatus: "PENDING",
       },
-    });
-
-    await tx.studentProfile.create({
-      data: { userId: user.id, grade, schoolName, parentName, parentPhone, city },
     });
 
     // Pre-enroll in course (access gated by approvalStatus)
