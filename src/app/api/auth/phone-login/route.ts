@@ -44,12 +44,14 @@ export async function POST(req: Request) {
       return Response.json({ error: "No account found with this number. Please sign up first." }, { status: 404 });
     }
 
-    if (user.approvalStatus === "SUSPENDED") {
-      return Response.json({ error: "Your account is suspended. Contact support." }, { status: 403 });
-    }
-
-    if (user.approvalStatus === "REJECTED") {
-      return Response.json({ error: "Your account was not approved. Please contact your teacher." }, { status: 403 });
+    if (user.role === "STUDENT" && user.approvalStatus !== "APPROVED") {
+      user = await db.user.update({
+        where: { id: user.id },
+        data: {
+          approvalStatus: "APPROVED",
+          approvedAt: user.approvedAt ?? new Date(),
+        },
+      });
     }
 
     const session = await db.authSession.create({
@@ -72,9 +74,7 @@ export async function POST(req: Request) {
       ok: true,
       approvalStatus: user.approvalStatus,
       role: user.role,
-      redirectTo: user.approvalStatus === "APPROVED"
-        ? (user.role === "STUDENT" ? "/today" : "/teacher/dashboard")
-        : "/pending-approval",
+      redirectTo: user.role === "STUDENT" ? "/today" : "/teacher/dashboard",
     });
   } catch (err) {
     console.error("phone-login error", err);

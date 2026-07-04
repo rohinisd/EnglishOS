@@ -15,8 +15,18 @@ export async function POST(req: Request) {
   const valid = await verifyOtp(phone, parsed.data.code);
   if (!valid) return Response.json({ error: "Invalid or expired OTP" }, { status: 400 });
 
-  const user = await db.user.findUnique({ where: { phone } });
+  let user = await db.user.findUnique({ where: { phone } });
   if (!user) return Response.json({ error: "User not found" }, { status: 404 });
+
+  if (user.role === "STUDENT" && user.approvalStatus !== "APPROVED") {
+    user = await db.user.update({
+      where: { id: user.id },
+      data: {
+        approvalStatus: "APPROVED",
+        approvedAt: user.approvedAt ?? new Date(),
+      },
+    });
+  }
 
   // Create session
   const session = await db.authSession.create({
@@ -39,6 +49,6 @@ export async function POST(req: Request) {
     ok: true,
     approvalStatus: user.approvalStatus,
     role: user.role,
-    redirectTo: user.approvalStatus === "APPROVED" ? "/today" : "/pending-approval",
+    redirectTo: user.role === "STUDENT" ? "/today" : "/teacher/dashboard",
   });
 }

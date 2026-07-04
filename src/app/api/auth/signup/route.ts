@@ -22,7 +22,8 @@ export async function POST(req: Request) {
           phone,
           name,
           role: "STUDENT",
-          approvalStatus: "PENDING",
+          approvalStatus: "APPROVED",
+          approvedAt: new Date(),
         },
       });
     } catch (err) {
@@ -32,11 +33,15 @@ export async function POST(req: Request) {
 
       await db.user.update({
         where: { phone },
-        data: { name },
+        data: {
+          name,
+          approvalStatus: "APPROVED",
+          approvedAt: new Date(),
+        },
       });
     }
 
-    return Response.json({ ok: true, message: "Account created. Waiting for admin approval." });
+    return Response.json({ ok: true, message: "Account created." });
   } catch (err) {
     console.error("signup error", err);
     const message = err instanceof Error ? err.message : "Unknown signup error";

@@ -49,7 +49,7 @@ export default function SignUpPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm text-center">
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="font-fraunces text-2xl font-bold text-navy mb-2">You&apos;re registered!</h2>
-          <p className="text-muted mb-6">Your account is pending admin approval. You&apos;ll be notified on WhatsApp once approved.</p>
+          <p className="text-muted mb-6">Your account is ready. Sign in with your phone number to start learning.</p>
           <Link href="/sign-in" className="block bg-navy text-cream py-3 rounded-xl font-semibold text-center hover:bg-navy/90 transition-colors">
             Go to Sign In
           </Link>

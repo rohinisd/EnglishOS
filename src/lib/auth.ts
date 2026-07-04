@@ -51,7 +51,6 @@ export async function requireAuth(): Promise<SessionUser> {
 
 export async function requireApproved(): Promise<SessionUser> {
   const user = await requireAuth();
-  if (user.approvalStatus === "PENDING") redirect("/pending-approval");
   if (user.approvalStatus === "REJECTED" || user.approvalStatus === "SUSPENDED") redirect("/sign-in?error=access_denied");
   return user;
 }
