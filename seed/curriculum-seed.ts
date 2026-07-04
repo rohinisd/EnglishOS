@@ -12,8 +12,12 @@
  */
 
 import { PrismaClient, SkillArea, LessonType, SubmissionType } from "@prisma/client";
+import { existsSync, readFileSync, readdirSync } from "fs";
+import path from "path";
 
 const db = new PrismaClient();
+const SESSION_NOTES_DIR = path.join(process.cwd(), "content", "sessions");
+let sessionNoteFiles: string[] | null = null;
 
 function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -21,6 +25,15 @@ function normalisePhone(raw: string): string {
   if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
   if (raw.trim().startsWith("+")) return raw.replace(/[^+\d]/g, "");
   return `+${digits}`;
+}
+
+function getSessionNote(sequence: number): string | null {
+  if (!existsSync(SESSION_NOTES_DIR)) return null;
+  sessionNoteFiles ??= readdirSync(SESSION_NOTES_DIR);
+  const prefix = `session-${sequence.toString().padStart(2, "0")}-`;
+  const file = sessionNoteFiles.find(name => name.startsWith(prefix) && name.endsWith(".md"));
+  if (!file) return null;
+  return readFileSync(path.join(SESSION_NOTES_DIR, file), "utf8").trim();
 }
 
 // ============================================================================
@@ -662,6 +675,42 @@ async function main() {
           lessonId: lesson.id,
         },
       });
+    }
+
+    // Topic notes from cleaned markdown files
+    const sessionNote = getSessionNote(s.sequence);
+    if (sessionNote) {
+      const title = `Session ${s.sequence} Notes`;
+      const existingReading = await db.lesson.findFirst({
+        where: { sessionId: session.id, type: "READING" },
+      });
+      if (existingReading) {
+        await db.lesson.update({
+          where: { id: existingReading.id },
+          data: { title, description: sessionNote },
+        });
+      } else {
+        const maxOrder = await db.lesson.aggregate({
+          where: { sessionId: session.id },
+          _max: { order: true },
+        });
+        await db.lesson.create({
+          data: {
+            sessionId: session.id,
+            type: "READING",
+            title,
+            description: sessionNote,
+            order: (maxOrder._max.order ?? 0) + 1,
+          },
+        });
+      }
+
+      if (!session.publishedAt) {
+        await db.session.update({
+          where: { id: session.id },
+          data: { publishedAt: new Date() },
+        });
+      }
     }
 
     // Writing assignment

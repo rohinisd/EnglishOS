@@ -1,11 +1,50 @@
 import { requireApproved } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { VideoSection } from "@/components/video/video-section";
 import { HomeworkSection } from "@/components/submissions/homework-section";
 import { QuizSection } from "@/components/quiz/quiz-section";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, PenLine, HelpCircle, MessageCircle, FileText } from "lucide-react";
+
+function renderTopicContent(content: string) {
+  const nodes: ReactNode[] = [];
+  let bullets: string[] = [];
+
+  const flushBullets = () => {
+    if (bullets.length === 0) return;
+    nodes.push(
+      <ul key={`list-${nodes.length}`} className="list-disc pl-5 space-y-1 text-muted">
+        {bullets.map((item, index) => <li key={index}>{item}</li>)}
+      </ul>
+    );
+    bullets = [];
+  };
+
+  content.split(/\r?\n/).forEach((line) => {
+    const text = line.trim();
+    if (!text || text === "---") {
+      flushBullets();
+      return;
+    }
+    if (text.startsWith("# Session ")) return;
+    if (text.startsWith("## ")) {
+      flushBullets();
+      nodes.push(<h4 key={`heading-${nodes.length}`} className="font-semibold text-navy pt-2">{text.slice(3)}</h4>);
+      return;
+    }
+    if (text.startsWith("- ")) {
+      bullets.push(text.slice(2));
+      return;
+    }
+    flushBullets();
+    nodes.push(<p key={`para-${nodes.length}`} className="text-muted">{text}</p>);
+  });
+
+  flushBullets();
+  return nodes;
+}
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -93,9 +132,9 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                 <h3 className="font-semibold text-navy text-base">
                   {readingLesson.title || "Topic Notes"}
                 </h3>
-                <p className="text-muted text-sm whitespace-pre-wrap leading-relaxed">
-                  {readingLesson.description}
-                </p>
+                <div className="space-y-3 text-sm leading-relaxed">
+                  {renderTopicContent(readingLesson.description)}
+                </div>
               </>
             ) : (
               <p className="text-muted text-sm">
