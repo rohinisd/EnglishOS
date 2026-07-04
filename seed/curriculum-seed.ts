@@ -588,6 +588,148 @@ function placeholderQuestions(topic: string): QuizQ[] {
   }));
 }
 
+function makeQuestion(prompt: string, correct: string, distractors: string[], explanation: string): QuizQ {
+  const options = [correct, ...distractors].filter((value, index, all) => all.indexOf(value) === index).slice(0, 4);
+  while (options.length < 4) options.push(`Option ${options.length + 1}`);
+  return { prompt, options, correct, explanation };
+}
+
+function generatedQuestions(s: SessionSpec): QuizQ[] {
+  const topic = s.grammarFocus;
+  const writing = s.writingFormat;
+  const speaking = s.speakingActivity;
+  const cursive = s.cursiveDrill;
+
+  return [
+    makeQuestion(
+      `What is the main grammar focus of Session ${s.sequence}?`,
+      topic,
+      [writing, speaking, cursive],
+      `This session's grammar focus is ${topic}.`,
+    ),
+    makeQuestion(
+      `Which writing format is practised in Session ${s.sequence}?`,
+      writing,
+      ["Formal letter", "Dialogue writing", "Report writing"],
+      `The writing task for this session practises ${writing}.`,
+    ),
+    makeQuestion(
+      `Which speaking activity belongs to Session ${s.sequence}?`,
+      speaking,
+      ["Debate Round 2", "News reading", "Picture talk"],
+      `The speaking activity is ${speaking}.`,
+    ),
+    makeQuestion(
+      `Which cursive drill should students practise in Session ${s.sequence}?`,
+      cursive,
+      ["Uppercase A-M", "Full page writing", "Timed copy"],
+      `The cursive drill is ${cursive}.`,
+    ),
+    makeQuestion(
+      `What should students focus on before writing the homework for Session ${s.sequence}?`,
+      "Plan the answer and follow the required format",
+      ["Write without reading the question", "Ignore word limits", "Use only one sentence"],
+      "Planning and format help make writing clear and complete.",
+    ),
+    makeQuestion(
+      "Which habit improves grammar accuracy?",
+      "Checking subject, verb, tense, and punctuation",
+      ["Writing as fast as possible", "Skipping revision", "Avoiding examples"],
+      "Grammar improves when students check the structure of each sentence.",
+    ),
+    makeQuestion(
+      "What is the best way to handle a common mistake?",
+      "Notice the error, correct it, and practise a similar sentence",
+      ["Memorise without understanding", "Leave the sentence unchanged", "Avoid the topic"],
+      "Correction plus practice helps the rule become natural.",
+    ),
+    makeQuestion(
+      "Why are examples useful in English learning?",
+      "They show how a rule works in real sentences",
+      ["They replace practice", "They remove the need to write", "They are only for exams"],
+      "Examples connect grammar rules to actual usage.",
+    ),
+    makeQuestion(
+      "What should a strong answer include?",
+      "Relevant points, correct grammar, and clear structure",
+      ["Only difficult words", "Only long sentences", "No punctuation"],
+      "Strong answers are clear, relevant, and well organised.",
+    ),
+    makeQuestion(
+      "Which action helps speaking confidence?",
+      "Practising aloud with a clear beginning, middle, and ending",
+      ["Speaking too fast", "Avoiding eye contact always", "Reading silently only"],
+      "Speaking confidence grows through organised oral practice.",
+    ),
+    makeQuestion(
+      "What is the goal of cursive practice?",
+      "Neat, consistent, and readable handwriting",
+      ["Writing untidily but fast", "Changing letter size every word", "Pressing the pen very hard"],
+      "Good cursive balances neatness, spacing, and consistency.",
+    ),
+    makeQuestion(
+      "What should students do after learning a rule?",
+      "Apply it in original sentences",
+      ["Forget the examples", "Only underline the heading", "Skip practice"],
+      "Applying rules in new sentences builds real understanding.",
+    ),
+    makeQuestion(
+      "Which is a good revision method?",
+      "Review notes, redo examples, and correct mistakes",
+      ["Only read headings", "Do all work at the last minute", "Avoid difficult questions"],
+      "Revision is strongest when students actively practise and correct.",
+    ),
+    makeQuestion(
+      "What makes homework complete?",
+      "Answering the prompt fully within the given word range",
+      ["Writing unrelated points", "Submitting a blank page", "Ignoring the prompt"],
+      "Complete homework follows the prompt and word guidance.",
+    ),
+    makeQuestion(
+      "What should students check before submitting writing?",
+      "Format, grammar, spelling, punctuation, and word count",
+      ["Only page colour", "Only handwriting speed", "Only the first sentence"],
+      "Final checking improves both clarity and marks.",
+    ),
+    makeQuestion(
+      "How should students treat difficult topics?",
+      "Break them into smaller rules and practise step by step",
+      ["Skip them permanently", "Guess every answer", "Stop revising"],
+      "Step-by-step practice makes difficult topics easier.",
+    ),
+    makeQuestion(
+      "What is the best way to learn vocabulary from this course?",
+      "Use new words in speaking and writing",
+      ["Only copy words once", "Never revise meanings", "Avoid using new words"],
+      "Vocabulary becomes active when students use it.",
+    ),
+    makeQuestion(
+      "Why should students read the question carefully?",
+      "To understand the exact task before answering",
+      ["To waste time", "To avoid writing", "To copy the question only"],
+      "Careful reading prevents wrong or incomplete answers.",
+    ),
+    makeQuestion(
+      "Which practice supports exam readiness?",
+      "Timed writing, grammar drills, and revision",
+      ["No practice before exams", "Only watching lessons", "Ignoring feedback"],
+      "Exam readiness needs timed practice and feedback-based revision.",
+    ),
+    makeQuestion(
+      "What is the main learning approach of each session?",
+      "Understand, practise, speak, write, and revise",
+      ["Memorise without practice", "Only complete quizzes", "Only watch once"],
+      "The course builds skill through understanding and repeated practice.",
+    ),
+  ];
+}
+
+function quizQuestionsForSession(s: SessionSpec): QuizQ[] {
+  const authored = s.sequence <= 5 ? (QUIZZES[s.sequence] ?? []) : [];
+  const supplemental = generatedQuestions(s).filter(q => !authored.some(existing => existing.prompt === q.prompt));
+  return [...authored, ...supplemental].slice(0, 20);
+}
+
 // ============================================================================
 // 5. BADGES
 // ============================================================================
@@ -736,24 +878,55 @@ async function main() {
       await db.assignment.create({ data: assignmentData });
     }
 
+    const existingSpeakingAssignment = await db.assignment.findFirst({
+      where: { sessionId: session.id, type: "SPEAKING" },
+    });
+    const speakingAssignmentData = {
+      sessionId: session.id,
+      type: "SPEAKING" as SubmissionType,
+      title: s.speakingActivity,
+      prompt: `Record yourself doing this speaking activity: ${s.speakingActivity}. Speak clearly, organise your thoughts, and aim for 1 to 2 minutes.`,
+      instructions: "Keep your voice clear. Start with a short introduction, include 2 to 3 main points, and end with a closing sentence.",
+      durationSecMin: 60,
+      durationSecMax: 120,
+      rubricId: rubricMap.get("SPEAKING")!,
+      maxScore: 10,
+    };
+    if (existingSpeakingAssignment) {
+      await db.assignment.update({
+        where: { id: existingSpeakingAssignment.id },
+        data: speakingAssignmentData,
+      });
+    } else {
+      await db.assignment.create({ data: speakingAssignmentData });
+    }
+
     // Quiz + Questions
     let quiz = await db.quiz.findFirst({ where: { sessionId: session.id } });
+    const quizData = {
+      title: `Quiz — ${s.title}`,
+      description: `20 questions on ${s.grammarFocus}`,
+      durationSec: 1200,
+      passingScore: 60,
+      maxAttempts: 3,
+    };
     if (!quiz) {
       quiz = await db.quiz.create({
         data: {
           sessionId: session.id,
-          title: `Quiz — ${s.title}`,
-          description: `5 questions on ${s.grammarFocus}`,
-          durationSec: 300,
-          passingScore: 60,
-          maxAttempts: 3,
+          ...quizData,
         },
+      });
+    } else {
+      quiz = await db.quiz.update({
+        where: { id: quiz.id },
+        data: quizData,
       });
     }
 
     // Upsert questions (delete + re-create for simplicity; safe for placeholders)
     await db.quizQuestion.deleteMany({ where: { quizId: quiz.id } });
-    const qs = QUIZZES[s.sequence] ?? [];
+    const qs = quizQuestionsForSession(s);
     for (let i = 0; i < qs.length; i++) {
       const q = qs[i];
       await db.quizQuestion.create({
