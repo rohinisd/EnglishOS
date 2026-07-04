@@ -3,11 +3,6 @@ import { db } from "@/lib/db";
 import Razorpay from "razorpay";
 import { z } from "zod";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
-
 const Body = z.object({
   plan: z.enum(["monthly", "full"]),
 });
@@ -26,6 +21,17 @@ export async function POST(req: Request) {
   const amountPaise = plan === "monthly"
     ? parseInt(process.env.COURSE_FEE_MONTHLY_PAISE ?? "100000")
     : parseInt(process.env.COURSE_FEE_FULL_PAISE ?? "180000");
+
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !keySecret) {
+    return Response.json({ error: "Razorpay is not configured." }, { status: 503 });
+  }
+
+  const razorpay = new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
 
   const order = await razorpay.orders.create({
     amount: amountPaise,
