@@ -1,6 +1,6 @@
 ---
 name: englishos-git-push
-description: Commit and push EnglishOS changes to GitHub. Use when the user asks to push, deploy, save to git, update GitHub, or make Vercel deploy changes for the EnglishOS repository.
+description: Commit and push EnglishOS changes to GitHub. Use when the user asks to push, deploy, save to git, update GitHub, make Vercel deploy changes, or after completing EnglishOS implementation work to proactively offer the git push workflow.
 ---
 
 # EnglishOS Git Push
@@ -8,6 +8,12 @@ description: Commit and push EnglishOS changes to GitHub. Use when the user asks
 ## Workflow
 
 Use this skill only inside the `EnglishOS` repository.
+
+## Proactive end-of-work behavior
+
+After completing code changes in `EnglishOS`, proactively check whether there are uncommitted relevant changes and offer to commit and push them using this skill.
+
+Do not silently commit or push without explicit user approval in the current conversation. If the user has clearly asked to commit/push/deploy/save to git, proceed with the workflow below. Otherwise, say that the changes are ready and ask whether to commit and push them.
 
 1. Check the repository state:
    - `git status --short --branch`

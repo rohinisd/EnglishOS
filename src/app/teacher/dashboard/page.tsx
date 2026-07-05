@@ -1,12 +1,12 @@
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
-import { Users, BookOpen, FileText, TrendingUp } from "lucide-react";
+import { Users, BookOpen, CalendarClock, FileText, TrendingUp } from "lucide-react";
 
 export default async function TeacherDashboard() {
   await requireRole(["TEACHER", "ADMIN"]);
 
-  const [totalStudents, pendingSubmissions, publishedSessions, recentSubmissions, pendingApprovals] = await Promise.all([
+  const [totalStudents, pendingSubmissions, publishedSessions, recentSubmissions, pendingApprovals, paidSpeakingBookings] = await Promise.all([
     db.user.count({ where: { role: "STUDENT", approvalStatus: "APPROVED" } }),
     db.submission.count({ where: { status: "SUBMITTED" } }),
     db.session.count({ where: { publishedAt: { not: null } } }),
@@ -17,6 +17,7 @@ export default async function TeacherDashboard() {
       take: 10,
     }),
     db.user.count({ where: { role: "STUDENT", approvalStatus: "PENDING" } }),
+    db.speakingBooking.count({ where: { status: "PAID" } }),
   ]);
 
   return (
@@ -61,6 +62,10 @@ export default async function TeacherDashboard() {
             <Link href="/teacher/submissions" className="flex items-center gap-3 bg-white rounded-xl p-4 border border-navy/10 hover:border-gold/50 transition-all">
               <FileText className="h-5 w-5 text-gold" />
               <span className="text-navy font-medium">Grade Submissions ({pendingSubmissions} pending)</span>
+            </Link>
+            <Link href="/teacher/speaking-bookings" className="flex items-center gap-3 bg-white rounded-xl p-4 border border-navy/10 hover:border-gold/50 transition-all">
+              <CalendarClock className="h-5 w-5 text-gold" />
+              <span className="text-navy font-medium">Speaking Bookings ({paidSpeakingBookings} paid)</span>
             </Link>
             <Link href="/teacher/roster" className="flex items-center gap-3 bg-white rounded-xl p-4 border border-navy/10 hover:border-gold/50 transition-all">
               <Users className="h-5 w-5 text-gold" />

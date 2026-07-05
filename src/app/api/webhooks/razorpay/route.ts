@@ -15,9 +15,16 @@ export async function POST(req: Request) {
 
   if (event.event === "payment.failed") {
     const orderId = event.payload.payment.entity.order_id;
-    await db.payment.updateMany({
-      where: { razorpayOrderId: orderId },
-      data: { status: "FAILED", failureReason: event.payload.payment.entity.error_description },
+    await db.$transaction(async tx => {
+      await tx.payment.updateMany({
+        where: { razorpayOrderId: orderId },
+        data: { status: "FAILED", failureReason: event.payload.payment.entity.error_description },
+      });
+
+      await tx.speakingBooking.updateMany({
+        where: { razorpayOrderId: orderId, status: "PENDING_PAYMENT" },
+        data: { status: "CANCELLED", cancelledAt: new Date() },
+      });
     });
   }
 

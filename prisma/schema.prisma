@@ -72,6 +72,14 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum SpeakingBookingStatus {
+  PENDING_PAYMENT
+  PAID
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
 enum NotificationChannel {
   IN_APP
   WHATSAPP
@@ -121,6 +129,8 @@ model User {
   submissions     Submission[]
   quizAttempts    QuizAttempt[]
   payments        Payment[]
+  speakingBookings SpeakingBooking[] @relation("SpeakingBookingStudent")
+  speakingBookingsAsTeacher SpeakingBooking[] @relation("SpeakingBookingTeacher")
   subscriptions   Subscription[]
   notifications   Notification[]
   doubts          Doubt[]
@@ -452,8 +462,10 @@ model Payment {
   id                String         @id @default(cuid())
   userId            String
   subscriptionId    String?
+  speakingBookingId String?        @unique
   user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription      Subscription?  @relation(fields: [subscriptionId], references: [id])
+  speakingBooking   SpeakingBooking? @relation(fields: [speakingBookingId], references: [id])
   amountPaise       Int
   currency          String         @default("INR")
   status            PaymentStatus  @default(CREATED)
@@ -468,6 +480,36 @@ model Payment {
   paidAt            DateTime?
   @@index([userId])
   @@index([status])
+}
+
+model SpeakingBooking {
+  id                String                @id @default(cuid())
+  studentId         String
+  teacherId         String?
+  student           User                  @relation("SpeakingBookingStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher           User?                 @relation("SpeakingBookingTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  sessionType       String                @default("60_MIN_SPEAKING")
+  durationMinutes   Int                   @default(60)
+  pricePaise        Int                   @default(10000)
+  status            SpeakingBookingStatus @default(PENDING_PAYMENT)
+  preferredStartAt  DateTime
+  confirmedStartAt  DateTime?
+  meetingLink       String?
+  studentNotes      String?
+  teacherFeedback   String?
+  razorpayOrderId   String?               @unique
+  razorpayPaymentId String?               @unique
+  razorpaySignature String?
+  paidAt            DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  payment           Payment?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([status])
+  @@index([preferredStartAt])
 }
 
 model Notification {

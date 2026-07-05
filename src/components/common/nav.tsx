@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Home, Trophy, MessageCircle, Settings, LogOut } from "lucide-react";
+import { BookOpen, CalendarClock, Home, Trophy, MessageCircle, Settings, LogOut } from "lucide-react";
 
 function SignOutButton() {
   const router = useRouter();
@@ -28,6 +28,7 @@ export function StudentNav() {
         {[
           { href: "/today", icon: Home, label: "Today" },
           { href: "/sessions", icon: BookOpen, label: "Sessions" },
+          { href: "/speaking-sessions", icon: CalendarClock, label: "Speaking" },
           { href: "/progress", icon: Trophy, label: "Progress" },
           { href: "/doubts", icon: MessageCircle, label: "Doubts" },
         ].map(({ href, icon: Icon, label }) => (
@@ -55,6 +56,7 @@ export function TeacherNav() {
           { href: "/teacher/dashboard", icon: Home, label: "Dashboard" },
           { href: "/teacher/sessions", icon: BookOpen, label: "Sessions" },
           { href: "/teacher/submissions", icon: Trophy, label: "Submissions" },
+          { href: "/teacher/speaking-bookings", icon: CalendarClock, label: "Speaking" },
           { href: "/teacher/roster", icon: Settings, label: "Roster" },
         ].map(({ href, icon: Icon, label }) => (
           <Link key={href} href={href} className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-muted hover:text-navy hover:bg-cream transition-colors md:flex-row md:gap-3 md:w-full">
